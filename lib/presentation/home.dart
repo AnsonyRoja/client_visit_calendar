@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:work_with_days/Database/databas_init.dart';
+import 'package:work_with_days/Database/get_database.dart';
+import 'package:work_with_days/Database/insert_database.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -29,12 +32,19 @@ class _MyHomePageState extends State<MyHomePage> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _selectedDay = DateTime.now();
 
+  void initDatabase() async {
+    await DatabaseHelper.instance.database;
+    // await insertPatient();
+    dynamic result = await getPatient();
+    print('Este es el resultado $result');
+  }
+
   @override
   void initState() {
     super.initState();
+    initDatabase();
 
-    // Formatear la fecha actual en el formato largo
-    originalFormattedDate =
+    var originalFormattedDate =
         DateFormat.yMMMMEEEEd('es').add_jms().format(DateTime.now());
     print('Fecha formateada original: $originalFormattedDate');
 
