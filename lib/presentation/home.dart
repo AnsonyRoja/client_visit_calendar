@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:toastify/toastify.dart';
 import 'package:work_with_days/Database/databas_init.dart';
 import 'package:work_with_days/Database/get_database.dart';
 import 'package:work_with_days/Database/insert_database.dart';
+import 'package:work_with_days/models/patient.dart';
+import 'package:work_with_days/presentation/add_patients.dart';
+import 'package:work_with_days/providers/patients_providers.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -31,12 +36,12 @@ class _MyHomePageState extends State<MyHomePage> {
   String? newFormattedDate;
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _selectedDay = DateTime.now();
-
+  List result = [];
+  PatientProvider? patientProvider;
   void initDatabase() async {
     await DatabaseHelper.instance.database;
-    // await insertPatient();
-    dynamic result = await getPatient();
-    print('Este es el resultado $result');
+    patientProvider = Provider.of<PatientProvider>(context, listen: false);
+    print('Este es el resultado de la consulta $result');
   }
 
   @override
@@ -90,6 +95,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final Color color = Theme.of(context).colorScheme.primary;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -99,63 +105,110 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            TableCalendar(
-              focusedDay: _selectedDay,
-              firstDay: DateTime.utc(2021, 10, 16),
-              lastDay: DateTime.utc(2030, 3, 14),
-              selectedDayPredicate: (day) {
-                // Esto resalta el día seleccionado en el calendario
-                return isSameDay(_selectedDay, day);
-              },
-              onDaySelected: (selectedDay, focusedDay) {
-                setState(() {
-                  _selectedDay = focusedDay;
-                });
+            Container(
+              width: MediaQuery.of(context).size.width * 0.9,
+              color: Colors.black,
+              child: TableCalendar(
+                headerStyle: const HeaderStyle(
+                    decoration: BoxDecoration(color: Colors.amber)),
+                focusedDay: _selectedDay,
+                firstDay: DateTime.utc(2021, 10, 16),
+                lastDay: DateTime.utc(2030, 3, 14),
+                selectedDayPredicate: (day) {
+                  // Esto resalta el día seleccionado en el calendario
+                  return isSameDay(_selectedDay, day);
+                },
+                onDaySelected: (selectedDay, focusedDay) async {
+                  String formmater =
+                      DateFormat('dd/MM/yyyy').format(selectedDay);
 
-                print('Día seleccionado: $_selectedDay ');
-              },
-              locale: 'es_ES',
-              calendarFormat: _calendarFormat,
-              onFormatChanged: (format) {
-                setState(() {
-                  _calendarFormat = format;
-                });
+                  await patientProvider!.getPatients(date: formmater);
 
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(
-                      'Formato cambiado a ${format == CalendarFormat.month ? 'Mes' : format == CalendarFormat.twoWeeks ? '2 Semanas' : 'Semana'}'),
-                  duration: const Duration(seconds: 1),
-                ));
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return StatefulBuilder(
+                        builder: (BuildContext context, setState) {
+                          return AlertDialog(
+                            title: const Text('Pacientes'),
+                            content: SizedBox(
+                              width: MediaQuery.of(context).size.width * 0.5,
+                              height: MediaQuery.of(context).size.height * 0.1,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                      'Consultas: ${patientProvider!.patients.length} '),
+                                  TextButton(
+                                      onPressed: () {
+                                        Navigator.push(context,
+                                            MaterialPageRoute(
+                                          builder: (context) {
+                                            return AddPatients(
+                                              date: selectedDay.toString(),
+                                            );
+                                          },
+                                        ));
+                                      },
+                                      child: const Text('Agregar Paciente'))
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
 
-                print('Valor de format $format');
-              },
-              availableCalendarFormats: const {
-                // si solomente hay un solo formato desaparece el boton, de cambiar el formato del calendario
-                CalendarFormat.month: 'Mes', // Texto en español para "Month"
-                CalendarFormat.twoWeeks:
-                    '2 Semanas', // Texto en español para "Two Weeks"
-                CalendarFormat.week: 'Semana', // Texto en español para "Week"
-              },
-              calendarStyle: const CalendarStyle(
-                todayTextStyle: TextStyle(color: Colors.black),
-                // Aquí puedes personalizar el color de `focusedDay`
-                todayDecoration: BoxDecoration(
-                  color: Colors.transparent, // Quitar color al día enfocado
-                  shape: BoxShape.circle,
+                  setState(() {
+                    _selectedDay = selectedDay;
+                  });
+                  print('Día seleccionado: $_selectedDay ');
+                },
+                locale: 'es_ES',
+                calendarFormat: _calendarFormat,
+                onFormatChanged: (format) {
+                  setState(() {
+                    _calendarFormat = format;
+                  });
+
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(
+                        'Formato cambiado a ${format == CalendarFormat.month ? 'Mes' : format == CalendarFormat.twoWeeks ? '2 Semanas' : 'Semana'}'),
+                    duration: const Duration(seconds: 1),
+                  ));
+
+                  print('Valor de format $format');
+                },
+                availableCalendarFormats: const {
+                  // si solomente hay un solo formato desaparece el boton, de cambiar el formato del calendario
+                  CalendarFormat.month: 'Mes', // Texto en español para "Month"
+                  CalendarFormat.twoWeeks:
+                      '2 Semanas', // Texto en español para "Two Weeks"
+                  CalendarFormat.week: 'Semana', // Texto en español para "Week"
+                },
+                calendarStyle: CalendarStyle(
+                  defaultTextStyle: const TextStyle(color: Colors.white),
+                  todayTextStyle: const TextStyle(color: Colors.white),
+                  // Aquí puedes personalizar el color de `focusedDay`
+                  todayDecoration: const BoxDecoration(
+                    color: Colors.transparent, // Quitar color al día enfocado
+                    shape: BoxShape.circle,
+                  ),
+                  selectedDecoration: BoxDecoration(
+                    color: color, // Mantener el color para el día seleccionado
+                    shape: BoxShape.circle,
+                  ),
+                  defaultDecoration: const BoxDecoration(
+                    shape:
+                        BoxShape.circle, // Forma predeterminada para otros días
+                  ),
+                  outsideDecoration: const BoxDecoration(
+                    shape: BoxShape.circle, // Forma para días fuera del mes
+                  ),
+
+                  // Puedes seguir ajustando otras propiedades según tus necesidades
                 ),
-                // selectedDecoration: BoxDecoration(
-                //   color:
-                //       Colors.blue, // Mantener el color para el día seleccionado
-                //   shape: BoxShape.circle,
-                // ),
-                defaultDecoration: BoxDecoration(
-                  shape:
-                      BoxShape.circle, // Forma predeterminada para otros días
-                ),
-                outsideDecoration: BoxDecoration(
-                  shape: BoxShape.circle, // Forma para días fuera del mes
-                ),
-                // Puedes seguir ajustando otras propiedades según tus necesidades
               ),
             )
 

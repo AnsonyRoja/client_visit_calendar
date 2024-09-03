@@ -9,7 +9,7 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('pacientes.db');
+    _database = await _initDB('patients.db');
     return _database!;
   }
 
@@ -19,6 +19,7 @@ class DatabaseHelper {
 
     // Elimina la base de datos si existe
     await deleteDatabase(dbPath);
+
     print('Base de datos eliminada');
 
     // Llama al método _initDatabase para crear la base de datos con la nueva estructura
